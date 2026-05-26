@@ -1,3 +1,5 @@
+import { ExecutionTimedOutException } from 'src/engine/core-modules/logic-function/logic-function-drivers/exceptions/execution-timed-out.exception';
+
 export const callWithTimeout = async <T>({
   callback,
   timeoutMs,
@@ -5,10 +7,18 @@ export const callWithTimeout = async <T>({
   callback: () => Promise<T>;
   timeoutMs: number;
 }): Promise<T> => {
-  return Promise.race([
-    callback(),
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error('Execution timed out')), timeoutMs),
-    ),
-  ]);
+  let timer: ReturnType<typeof setTimeout>;
+
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new ExecutionTimedOutException(timeoutMs)),
+      timeoutMs,
+    );
+  });
+
+  try {
+    return await Promise.race([callback(), timeoutPromise]);
+  } finally {
+    clearTimeout(timer!);
+  }
 };
