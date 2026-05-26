@@ -36,6 +36,7 @@ import {
   type WorkflowBranchExecutorInput,
   type WorkflowExecutorInput,
 } from 'src/modules/workflow/workflow-executor/types/workflow-executor-input';
+import { getStepIdsToSkipWithDescendants } from 'src/modules/workflow/workflow-executor/utils/get-step-ids-to-skip-with-descendants.util';
 import { shouldExecuteStep } from 'src/modules/workflow/workflow-executor/utils/should-execute-step.util';
 import { shouldFailSafely } from 'src/modules/workflow/workflow-executor/utils/should-fail-safely.util';
 import { shouldSkipStepExecution } from 'src/modules/workflow/workflow-executor/utils/should-skip-step-execution.util';
@@ -547,13 +548,23 @@ export class WorkflowExecutorWorkspaceService {
     workspaceId: string;
     executedStepsCount: number;
   }) {
+    const expandedStepIdsToSkip = getStepIdsToSkipWithDescendants({
+      stepIds: stepIdsToSkip,
+      steps,
+    });
+
+    const expandedStepIdsToFailSafely = getStepIdsToSkipWithDescendants({
+      stepIds: stepIdsToFailSafely,
+      steps,
+    });
+
     const stepInfos: Record<string, WorkflowRunStepInfo> = {};
 
-    for (const stepId of stepIdsToSkip) {
+    for (const stepId of expandedStepIdsToSkip) {
       stepInfos[stepId] = { status: StepStatus.SKIPPED };
     }
 
-    for (const stepId of stepIdsToFailSafely) {
+    for (const stepId of expandedStepIdsToFailSafely) {
       stepInfos[stepId] = { status: StepStatus.FAILED_SAFELY };
     }
 
@@ -565,8 +576,11 @@ export class WorkflowExecutorWorkspaceService {
 
     const nextStepIds = new Set<string>();
 
-    for (const stepId of [...stepIdsToSkip, ...stepIdsToFailSafely]) {
-      const step = steps.find((step) => step.id === stepId);
+    for (const stepId of [
+      ...expandedStepIdsToSkip,
+      ...expandedStepIdsToFailSafely,
+    ]) {
+      const step = steps.find((candidate) => candidate.id === stepId);
 
       for (const nextStepId of step?.nextStepIds ?? []) {
         nextStepIds.add(nextStepId);
