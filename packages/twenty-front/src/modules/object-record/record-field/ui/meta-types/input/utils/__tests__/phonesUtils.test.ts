@@ -72,6 +72,58 @@ describe('createPhonesFromFieldValue test suite', () => {
     ]);
   });
 
+  it('should parse legacy JSON-encoded additional phones', () => {
+    const fieldValue = {
+      primaryPhoneNumber: '123456789',
+      primaryPhoneCountryCode: 'US',
+      primaryPhoneCallingCode: '+1',
+      additionalPhones: JSON.stringify([
+        { number: '987654321', callingCode: '+44', countryCode: 'GB' },
+        { number: '555555555', callingCode: '+33', countryCode: 'FR' },
+      ]),
+    } as unknown as FieldPhonesValue;
+
+    expect(createPhonesFromFieldValue(fieldValue)).toEqual([
+      {
+        number: '123456789',
+        callingCode: '+1',
+        countryCode: 'US',
+      },
+      { number: '987654321', callingCode: '+44', countryCode: 'GB' },
+      { number: '555555555', callingCode: '+33', countryCode: 'FR' },
+    ]);
+  });
+
+  it.each(['invalid JSON', JSON.stringify({ number: '987654321' })])(
+    'should ignore invalid legacy additional phones while preserving the primary phone',
+    (additionalPhones) => {
+      const fieldValue = {
+        primaryPhoneNumber: '123456789',
+        primaryPhoneCountryCode: 'US',
+        primaryPhoneCallingCode: '+1',
+        additionalPhones,
+      } as unknown as FieldPhonesValue;
+
+      expect(createPhonesFromFieldValue(fieldValue)).toEqual([
+        {
+          number: '123456789',
+          callingCode: '+1',
+          countryCode: 'US',
+        },
+      ]);
+    },
+  );
+
+  it('should return an empty array for invalid legacy additional phones without a primary phone', () => {
+    const fieldValue = {
+      primaryPhoneNumber: '',
+      primaryPhoneCountryCode: '',
+      additionalPhones: 'invalid JSON',
+    } as unknown as FieldPhonesValue;
+
+    expect(createPhonesFromFieldValue(fieldValue)).toEqual([]);
+  });
+
   it('should return an array with additional phones if they are defined while no primary phone defined', () => {
     const fieldValue: FieldPhonesValue = {
       primaryPhoneNumber: '',

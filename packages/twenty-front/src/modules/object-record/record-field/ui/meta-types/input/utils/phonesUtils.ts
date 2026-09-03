@@ -1,5 +1,21 @@
-import { type FieldPhonesValue } from '@/object-record/record-field/ui/types/FieldMetadata';
-import { isDefined } from 'twenty-shared/utils';
+import { isArray } from '@sniptt/guards';
+
+import {
+  type FieldPhonesValue,
+  type PhoneRecord,
+} from '@/object-record/record-field/ui/types/FieldMetadata';
+import { isDefined, parseJson } from 'twenty-shared/utils';
+
+const normalizeAdditionalPhones = (
+  additionalPhones: FieldPhonesValue['additionalPhones'] | string,
+): PhoneRecord[] => {
+  const parsedAdditionalPhones =
+    typeof additionalPhones === 'string'
+      ? parseJson<PhoneRecord[]>(additionalPhones)
+      : additionalPhones;
+
+  return isArray(parsedAdditionalPhones) ? parsedAdditionalPhones : [];
+};
 
 export const createPhonesFromFieldValue = (fieldValue: FieldPhonesValue) => {
   return !isDefined(fieldValue)
@@ -14,6 +30,6 @@ export const createPhonesFromFieldValue = (fieldValue: FieldPhonesValue) => {
               countryCode: fieldValue.primaryPhoneCountryCode,
             }
           : null,
-        ...(fieldValue.additionalPhones ?? []),
+        ...normalizeAdditionalPhones(fieldValue.additionalPhones),
       ].filter(isDefined);
 };
